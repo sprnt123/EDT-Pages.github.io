@@ -10750,6 +10750,17 @@ vless://7b102311-43fd-4e8f-977e-8090623c101d@edt-pages.github.io:443?security=tl
             render();
         }
 
+        function refreshLineEditor(textarea) {
+            if (!textarea) return;
+
+            if (typeof textarea._refreshLineEditor === 'function') {
+                textarea._refreshLineEditor();
+                return;
+            }
+
+            textarea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
         async function loadConfig() {
             try {
                 // 禁用 Rocket Loader 对该请求的影响
@@ -16984,6 +16995,8 @@ vless://7b102311-43fd-4e8f-977e-8090623c101d@edt-pages.github.io:443?security=tl
                     showToast('已追加到自定义优选地址 (前16个)', 'success');
                 }
             }
+
+            refreshLineEditor(textarea);
 
             // 标记为已修改
             markModified('sub');
