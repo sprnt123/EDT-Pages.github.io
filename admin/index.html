@@ -7947,6 +7947,74 @@ vless://7b102311-43fd-4e8f-977e-8090623c101d@edt-pages.github.io:443?security=tl
                 </div>
             </div>
 
+            <!-- 模块: 出口代理设置 -->
+            <div class="module collapsed advanced-module">
+                <div class="module-title" onclick="toggleModule(this)">
+                    🚀 出口代理设置（指定落地IP）
+                    <svg class="collapse-icon" viewBox="0 0 24 24">
+                        <path d="M7 10l5 5 5-5z" />
+                    </svg>
+                </div>
+                <div class="module-content">
+                    <div class="form-group">
+                        <label>💡 功能说明</label>
+                        <p style="color: #888; font-size: 13px; margin-bottom: 15px;">
+                            先通过优选 ProxyIP 作为入口（低延迟），再经过指定的 SOCKS5 代理作为落地（指定地区出口IP）。
+                            <br>流量路径：<code style="background: #f0f0f0; padding: 2px 6px; border-radius: 4px;">用户 → ProxyIP → SOCKS5 → 目标</code>
+                        </p>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="exitProxyEnable" title="启用出口代理"
+                                onchange="toggleExitProxySection(); markModified('exitProxy')">
+                            <label for="exitProxyEnable" class="checkbox-label"
+                                title="启用出口代理">启用出口代理</label>
+                        </div>
+                    </div>
+
+                    <div id="exitProxySection" class="hidden-section">
+                        <div class="form-group">
+                            <label for="exitProxyType">代理类型</label>
+                            <select id="exitProxyType" title="代理类型" onchange="markModified('exitProxy')">
+                                <option value="socks5">SOCKS5</option>
+                                <option value="http">HTTP</option>
+                                <option value="https">HTTPS</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="exitProxyAddr">代理地址</label>
+                            <input type="text" id="exitProxyAddr" title="代理地址"
+                                placeholder="user:password@proxy.example.com:1080"
+                                onchange="markModified('exitProxy')" oninput="markModified('exitProxy')">
+                            <p style="color: #888; font-size: 12px; margin-top: 5px;">
+                                格式：<code>用户名:密码@地址:端口</code> 或 <code>地址:端口</code>（无认证）
+                            </p>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="exitProxyWhitelist">域名白名单（可选）</label>
+                            <textarea id="exitProxyWhitelist" title="域名白名单"
+                                placeholder="*.google.com, youtube.com, netflix.com"
+                                rows="3" onchange="markModified('exitProxy')" oninput="markModified('exitProxy')"></textarea>
+                            <p style="color: #888; font-size: 12px; margin-top: 5px;">
+                                只对匹配的域名走出口代理，留空则全部流量都走出口代理。支持通配符 <code>*</code>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="module-footer">
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-secondary" onclick="cancelEdit('exitProxy')" disabled
+                                id="cancelExitProxyBtn">取消</button>
+                            <button type="button" class="btn btn-primary" onclick="saveExitProxy()" disabled
+                                id="saveExitProxyBtn">保存</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 模块5: 订阅转换配置 -->
             <div class="module collapsed advanced-module">
                 <div class="module-title" onclick="toggleModule(this)">
@@ -10985,6 +11053,16 @@ vless://7b102311-43fd-4e8f-977e-8090623c101d@edt-pages.github.io:443?security=tl
             }
             updateProxyMode();
 
+            // 出口代理设置
+            const exitProxy = currentConfig.出口代理;
+            if (exitProxy) {
+                document.getElementById('exitProxyEnable').checked = exitProxy.启用 || false;
+                document.getElementById('exitProxyType').value = exitProxy.类型 || 'socks5';
+                document.getElementById('exitProxyAddr').value = exitProxy.地址 || '';
+                document.getElementById('exitProxyWhitelist').value = (exitProxy.白名单 || []).join(', ');
+                toggleExitProxySection();
+            }
+
             // 检查路径模板字段是否存在
             const pathTemplateConfigBtn = document.getElementById('pathTemplateConfigBtn');
             if (currentConfig.反代?.路径模板 !== undefined) {
@@ -12150,6 +12228,11 @@ vless://7b102311-43fd-4e8f-977e-8090623c101d@edt-pages.github.io:443?security=tl
             document.getElementById('saveProxyBtn').disabled = !proxyModified;
             document.getElementById('cancelProxyBtn').disabled = !proxyModified;
 
+            // 出口代理设置模块
+            const exitProxyModified = modifiedSections.has('exitProxy');
+            document.getElementById('saveExitProxyBtn').disabled = !exitProxyModified;
+            document.getElementById('cancelExitProxyBtn').disabled = !exitProxyModified;
+
             // 订阅转换模块
             const convertModified = modifiedSections.has('convert');
             document.getElementById('saveConvertBtn').disabled = !convertModified;
@@ -12529,6 +12612,42 @@ vless://7b102311-43fd-4e8f-977e-8090623c101d@edt-pages.github.io:443?security=tl
             await saveConfigToServer('proxy');
         }
 
+        // 切换出口代理配置区显示/隐藏
+        function toggleExitProxySection() {
+            const enabled = document.getElementById('exitProxyEnable').checked;
+            const section = document.getElementById('exitProxySection');
+            if (enabled) {
+                section.classList.remove('hidden-section');
+            } else {
+                section.classList.add('hidden-section');
+            }
+        }
+
+        // 保存出口代理配置
+        async function saveExitProxy() {
+            const enabled = document.getElementById('exitProxyEnable').checked;
+            const type = document.getElementById('exitProxyType').value;
+            const addr = document.getElementById('exitProxyAddr').value.trim();
+            const whitelistStr = document.getElementById('exitProxyWhitelist').value.trim();
+
+            if (enabled && !addr) {
+                showToast('出口代理地址不能为空', 'error');
+                return;
+            }
+
+            // 解析白名单
+            const whitelist = whitelistStr ? whitelistStr.split(/[,，\s]+/).filter(s => s.trim()) : [];
+
+            currentConfig.出口代理 = {
+                启用: enabled,
+                类型: type,
+                地址: addr,
+                白名单: whitelist
+            };
+
+            await saveConfigToServer('exitProxy');
+        }
+
         // 加载SubConfig JSON数据
         async function loadSubConfigData() {
             try {
@@ -12758,6 +12877,21 @@ vless://7b102311-43fd-4e8f-977e-8090623c101d@edt-pages.github.io:443?security=tl
                     document.getElementById('globalHTTPS').checked = currentConfig.反代?.SOCKS5?.全局 || false;
                 }
                 updateProxyMode();
+            } else if (section === 'exitProxy') {
+                // 重置出口代理配置
+                const exitProxy = currentConfig.出口代理;
+                if (exitProxy) {
+                    document.getElementById('exitProxyEnable').checked = exitProxy.启用 || false;
+                    document.getElementById('exitProxyType').value = exitProxy.类型 || 'socks5';
+                    document.getElementById('exitProxyAddr').value = exitProxy.地址 || '';
+                    document.getElementById('exitProxyWhitelist').value = (exitProxy.白名单 || []).join(', ');
+                } else {
+                    document.getElementById('exitProxyEnable').checked = false;
+                    document.getElementById('exitProxyType').value = 'socks5';
+                    document.getElementById('exitProxyAddr').value = '';
+                    document.getElementById('exitProxyWhitelist').value = '';
+                }
+                toggleExitProxySection();
             } else if (section === 'convert') {
                 document.getElementById('subAPI').value = currentConfig.订阅转换配置?.SUBAPI || '';
                 document.getElementById('subConfig').value = currentConfig.订阅转换配置?.SUBCONFIG || '';
