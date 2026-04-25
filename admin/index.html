@@ -7992,16 +7992,6 @@ vless://7b102311-43fd-4e8f-977e-8090623c101d@edt-pages.github.io:443?security=tl
                                 格式：<code>用户名:密码@地址:端口</code> 或 <code>地址:端口</code>（无认证）
                             </p>
                         </div>
-
-                        <div class="form-group">
-                            <label for="exitProxyWhitelist">域名白名单（可选）</label>
-                            <textarea id="exitProxyWhitelist" title="域名白名单"
-                                placeholder="*.google.com, youtube.com, netflix.com"
-                                rows="3" onchange="markModified('exitProxy')" oninput="markModified('exitProxy')"></textarea>
-                            <p style="color: #888; font-size: 12px; margin-top: 5px;">
-                                只对匹配的域名走出口代理，留空则全部流量都走出口代理。支持通配符 <code>*</code>
-                            </p>
-                        </div>
                     </div>
 
                     <div class="module-footer">
@@ -11059,7 +11049,6 @@ vless://7b102311-43fd-4e8f-977e-8090623c101d@edt-pages.github.io:443?security=tl
                 document.getElementById('exitProxyEnable').checked = exitProxy.启用 || false;
                 document.getElementById('exitProxyType').value = exitProxy.类型 || 'socks5';
                 document.getElementById('exitProxyAddr').value = exitProxy.地址 || '';
-                document.getElementById('exitProxyWhitelist').value = (exitProxy.白名单 || []).join(', ');
                 toggleExitProxySection();
             }
 
@@ -12628,21 +12617,16 @@ vless://7b102311-43fd-4e8f-977e-8090623c101d@edt-pages.github.io:443?security=tl
             const enabled = document.getElementById('exitProxyEnable').checked;
             const type = document.getElementById('exitProxyType').value;
             const addr = document.getElementById('exitProxyAddr').value.trim();
-            const whitelistStr = document.getElementById('exitProxyWhitelist').value.trim();
 
             if (enabled && !addr) {
                 showToast('出口代理地址不能为空', 'error');
                 return;
             }
 
-            // 解析白名单
-            const whitelist = whitelistStr ? whitelistStr.split(/[,，\s]+/).filter(s => s.trim()) : [];
-
             currentConfig.出口代理 = {
                 启用: enabled,
                 类型: type,
-                地址: addr,
-                白名单: whitelist
+                地址: addr
             };
 
             await saveConfigToServer('exitProxy');
@@ -12884,12 +12868,10 @@ vless://7b102311-43fd-4e8f-977e-8090623c101d@edt-pages.github.io:443?security=tl
                     document.getElementById('exitProxyEnable').checked = exitProxy.启用 || false;
                     document.getElementById('exitProxyType').value = exitProxy.类型 || 'socks5';
                     document.getElementById('exitProxyAddr').value = exitProxy.地址 || '';
-                    document.getElementById('exitProxyWhitelist').value = (exitProxy.白名单 || []).join(', ');
                 } else {
                     document.getElementById('exitProxyEnable').checked = false;
                     document.getElementById('exitProxyType').value = 'socks5';
                     document.getElementById('exitProxyAddr').value = '';
-                    document.getElementById('exitProxyWhitelist').value = '';
                 }
                 toggleExitProxySection();
             } else if (section === 'convert') {
